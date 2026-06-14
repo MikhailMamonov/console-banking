@@ -1,23 +1,30 @@
 package com.example.banking.exception;
 
 public enum ErrorType {
-    VALIDATION_ERROR("Validation Error"),
-    ACCOUNT_NOT_FOUND("Account Not Found"),
-    USER_NOT_FOUND("User Not Found"),
-    INSUFFICIENT_FUNDS("Insufficient Funds"),
-    ACCOUNT_CLOSE_ERROR("Account Close Error"),
-    TRANSFER_ERROR("Transfer Error"),
-    WITHDRAW_ERROR("Withdraw Error"),
-    DEPOSIT_ERROR("Deposit Error"),
-    CONFIGURATION_ERROR("Configuration Error");
+    // Валидационные ошибки
+    VALIDATION_ERROR,
 
-    private final String description;
+    // Ошибки поиска
+    NOT_FOUND,
+    USER_NOT_FOUND,
+    ACCOUNT_NOT_FOUND,
 
-    ErrorType(String description) {
-        this.description = description;
-    }
+    // Бизнес-ошибки
+    INSUFFICIENT_FUNDS,
+    NEGATIVE_BALANCE,
+    CLOSING_LAST_ACCOUNT,
+    SAME_ACCOUNT_TRANSFER,
 
-    public String getDescription() {
-        return description;
-    }
+    // Операционные ошибки
+    TRANSFER_ERROR,
+    WITHDRAW_ERROR,
+    DEPOSIT_ERROR,
+    CLOSE_ACCOUNT_ERROR,
+    CREATE_ACCOUNT_ERROR,
+
+    // Конфигурационные ошибки
+    CONFIGURATION_ERROR,
+
+    // Общие бизнес-ошибки
+    BUSINESS_ERROR
 }

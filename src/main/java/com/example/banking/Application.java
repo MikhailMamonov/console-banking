@@ -1,7 +1,9 @@
 
 package com.example.banking;
 
+import com.example.banking.exception.BankingException;
 import com.example.banking.exception.ErrorHandler;
+import com.example.banking.exception.ErrorType;
 import com.example.banking.model.entity.Account;
 import com.example.banking.model.entity.User;
 import com.example.banking.service.AccountService;
@@ -11,6 +13,7 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 
 public class Application {
@@ -79,37 +82,50 @@ public class Application {
     }
 
     private static void depositOperation() {
+        System.out.println("\n=== DEPOSIT ===");
         String accountId = consoleListener.readLine("Enter account ID: ");
-        double amount = consoleListener.readDouble("Enter amount to deposit:");
+        double amount = consoleListener.readDouble("Enter amount to deposit: ");
+
         try {
             accountService.deposit(accountId, amount);
+        } catch (BankingException e) {
+            handleBankingException(e);
         } catch (Exception e) {
-            errorHandler.handleError("ACCOUNT_DEPOSIT", e.getMessage());
+            errorHandler.handleError("ACCOUNT_DEPOSIT", "Unexpected error: " + e.getMessage());
         }
     }
 
     private static void transferOperation(){
-        String sourceId = consoleListener.readLine("Enter source account ID:");
-        String targetId = consoleListener.readLine("Enter target account ID:");
-        double amount = consoleListener.readDouble("Enter amount to transfer");
+        System.out.println("\n=== TRANSFER ===");
+        String sourceId = consoleListener.readLine("Enter source account ID: ");
+        String targetId = consoleListener.readLine("Enter target account ID: ");
+        double amount = consoleListener.readDouble("Enter amount to transfer: ");
+
         try {
             accountService.transfer(sourceId, targetId, amount);
+        } catch (BankingException e) {
+            handleBankingException(e);
         } catch (Exception e) {
-            errorHandler.handleError("ACCOUNT_TRANSFER", e.getMessage());
+            errorHandler.handleError("ACCOUNT_TRANSFER", "Unexpected error: " + e.getMessage());
         }
     }
 
     private static void withdrawOperation(){
-        String accountId = consoleListener.readLine("Enter account ID to withdraw from:");
-        double amount = consoleListener.readDouble("Enter amount to withdraw:");
+        System.out.println("\n=== WITHDRAW ===");
+        String accountId = consoleListener.readLine("Enter account ID to withdraw from: ");
+        double amount = consoleListener.readDouble("Enter amount to withdraw: ");
+
         try {
             accountService.withdraw(accountId, amount);
+        } catch (BankingException e) {
+            handleBankingException(e);
         } catch (Exception e) {
-            errorHandler.handleError("ACCOUNT_WITHDRAW", e.getMessage());
+            errorHandler.handleError("ACCOUNT_WITHDRAW", "Unexpected error: " + e.getMessage());
         }
     }
 
     private static void showAllUsers() {
+
         userService.showAllUsers();
     }
 
@@ -147,18 +163,21 @@ public class Application {
         }
 
         try {
-            int userId = userService.getAllUsers().size() + 1;
-            String userIdStr = String.valueOf(userId);
+            String userIdStr = String.valueOf(userService.getAllUsers().size() + 1);
 
             List<Account> accounts = new ArrayList<>();
             Account account = accountService.createAccount(userIdStr, null);
             accounts.add(account);
 
             User user = userService.createUser(login, accounts);
+            System.out.printf("✅ User created: %s%n", user);
+            System.out.printf("   First account ID: %s with balance: %.2f%n",
+                    account.getId(), account.getMoneyAmount());
 
-            System.out.println("User created: " + user);
+        } catch (BankingException e) {
+            handleBankingException(e);
         } catch (Exception e) {
-            errorHandler.handleError("USER_CREATE", e.getMessage());
+            errorHandler.handleError("USER_CREATE", "Unexpected error: " + e.getMessage());
         }
     }
 
@@ -173,5 +192,54 @@ public class Application {
         System.out.println("ACCOUNT_TRANSFER. Перевести на другой счёт." );
         System.out.println("ACCOUNT_WITHDRAW. Вывести средства со счета");
         System.out.println("0. Выход");
+    }
+
+    private static void handleBankingException(BankingException e) {
+        System.err.printf("❌ Error in %s: %s%n", e.getOperationType(), e.getMessage());
+
+        // Специфическая обработка для разных типов ошибок
+        switch (e.getErrorType()) {
+            case INSUFFICIENT_FUNDS:
+                System.err.println("   💡 Please check your balance and try again.");
+                break;
+            case ACCOUNT_NOT_FOUND:
+                System.err.println("   💡 Account does not exist. Please verify the account ID.");
+                break;
+            case USER_NOT_FOUND:
+                System.err.println("   💡 User does not exist. Please verify the user ID.");
+                break;
+            case VALIDATION_ERROR:
+                System.err.println("   💡 Please check your input and try again.");
+                break;
+            case CLOSING_LAST_ACCOUNT:
+                System.err.println("   💡 You cannot close your only account. Create another account first.");
+                break;
+            case NEGATIVE_BALANCE:
+                System.err.println("   💡 Cannot close account with negative balance. Deposit funds first.");
+                break;
+            case SAME_ACCOUNT_TRANSFER:
+                System.err.println("   💡 Cannot transfer funds to the same account.");
+                break;
+            default:
+                System.err.println("   💡 Please contact support if the problem persists.");
+        }
+
+        // Детальная информация для отладки (если нужно)
+        if (e.getDetails() != null && e.getDetails().length > 0) {
+            System.err.print("   Details: ");
+            for (int i = 0; i < e.getDetails().length; i += 2) {
+                if (i + 1 < e.getDetails().length) {
+                    System.err.printf("%s=%s ", e.getDetails()[i], e.getDetails()[i + 1]);
+                }
+            }
+            System.err.println();
+        }
+    }
+
+    private static Optional<Account> findAccountById(String accountId) {
+        return userService.getAllUsers().stream()
+                .flatMap(user -> user.getAccountList().stream())
+                .filter(account -> account.getId().equals(accountId))
+                .findFirst();
     }
 }
