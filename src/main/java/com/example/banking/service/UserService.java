@@ -12,10 +12,10 @@ import java.util.Optional;
 public class UserService {
     private final List<User> users = new ArrayList<>();
 
-    public User createUser(String id, String login, List<Account> accounts) {
+    public User createUser(String login, List<Account> accounts) {
+        String id = String.valueOf(getAllUsers().size()+1);
         User user = new User(id, login, accounts);
         users.add(user);
-        System.out.println("Пользователь " + login + " успешно создан!");
         return user;
     }
 
@@ -43,10 +43,9 @@ public class UserService {
         if (users.isEmpty()) {
             System.out.println("Нет зарегистрированных пользователей");
         } else {
-            System.out.println("\n=== СПИСОК ПОЛЬЗОВАТЕЛЕЙ ===");
+            System.out.println("\nList of all users:");
             users.forEach(user -> {
-                System.out.println("ID: " + user.getId() + ", Логин: " + user.getLogin());
-                System.out.println("  Аккаунтов: " + user.getAccountList().size());
+                System.out.println(user);
             });
         }
     }

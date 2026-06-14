@@ -20,7 +20,7 @@ public class OperationsConsoleListener {
         try {
             return Double.parseDouble(scanner.nextLine());
         } catch (NumberFormatException e) {
-            System.out.println("Ошибка: введите число");
+            System.out.println("Error: you need to enter a number");
             return readDouble(prompt);
         }
     }
@@ -30,7 +30,7 @@ public class OperationsConsoleListener {
         try {
             return Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
-            System.out.println("Ошибка: введите число");
+            System.out.println("Error: you need to enter a number");
             return readInt(prompt);
         }
     }

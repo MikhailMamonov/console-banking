@@ -3,13 +3,21 @@ package com.example.banking.model.entity;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 
 public class Account {
+
+    private static AtomicLong idGenerator = new AtomicLong(1);
     private String id;
     private String userId;
     private double moneyAmount;
 
+    public Account(String userId, double moneyAmount) {
+        this.id = String.valueOf(idGenerator.getAndIncrement());
+        this.userId = userId;
+        this.moneyAmount = moneyAmount;
+    }
 
     public Account(String id, String userId, double moneyAmount) {
         this.id = id;
@@ -39,5 +47,11 @@ public class Account {
 
     public void setMoneyAmount(double moneyAmount) {
         this.moneyAmount = moneyAmount;
+    }
+
+    @java.lang.Override
+    public java.lang.String toString() {
+        return String.format("Account{id=%s, userId=%s, moneyAmount=%.2f}",
+                id, userId, moneyAmount);
     }
 }

@@ -36,4 +36,22 @@ public class User {
     public void setLogin(String login) {
         this.login = login;
     }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(String.format("\nUser{id=%s, login='%s'\n", id, login));
+        sb.append("  Accounts:\n");
+
+        if (accountList == null || accountList.isEmpty()) {
+            sb.append("    └─ No accounts\n");
+        } else {
+            for (Account account : accountList) {
+                sb.append(String.format("    ├─ ID: %s | Balance: %.2f\n",
+                        account.getId(), account.getMoneyAmount()));
+            }
+        }
+        sb.append("}");
+        return sb.toString();
+    }
 }
