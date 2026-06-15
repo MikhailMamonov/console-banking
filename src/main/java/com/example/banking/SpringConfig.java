@@ -15,12 +15,4 @@ public class SpringConfig {
     public OperationsConsoleListener operationsConsoleListener() {
         return new OperationsConsoleListener();
     }
-
-    // УДАЛИТЕ эти методы, если они есть:
-    // @Bean
-    // public User consoleUser(...) { ... }
-
-    // @Bean
-    // @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
-    // public Account consoleAccount(...) { ... }
 }

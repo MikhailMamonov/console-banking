@@ -1,15 +1,20 @@
 package com.example.banking;
 
+<<<<<<< Updated upstream
 import com.example.banking.model.entity.Account;
 import com.example.banking.model.entity.User;
 import com.example.banking.service.AccountService;
 import com.example.banking.service.OperationsConsoleListener;
 import com.example.banking.service.UserService;
 import org.springframework.context.ApplicationContext;
+=======
+import com.example.banking.console.ConsoleController;
+>>>>>>> Stashed changes
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 
+<<<<<<< Updated upstream
 import java.util.ArrayList;
 import java.util.List;
 
@@ -133,4 +138,16 @@ public class Application {
     }
 
 
+=======
+public class Application {
+
+    public static void main(String[] args) {
+        try (AnnotationConfigApplicationContext context =
+                     new AnnotationConfigApplicationContext(SpringConfig.class)) {
+
+            ConsoleController consoleController = context.getBean(ConsoleController.class);
+            consoleController.start();
+        }
+    }
+>>>>>>> Stashed changes
 }
