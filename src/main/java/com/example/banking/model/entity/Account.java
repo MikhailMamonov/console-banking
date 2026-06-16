@@ -8,16 +8,9 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class Account {
 
-    private static AtomicLong idGenerator = new AtomicLong(1);
     private String id;
     private String userId;
     private double moneyAmount;
-
-    public Account(String userId, double moneyAmount) {
-        this.id = String.valueOf(idGenerator.getAndIncrement());
-        this.userId = userId;
-        this.moneyAmount = moneyAmount;
-    }
 
     public Account(String id, String userId, double moneyAmount) {
         this.id = id;

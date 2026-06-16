@@ -10,9 +10,9 @@ import java.util.List;
 public class AccountLogger {
 
     // Константы для шаблонов сообщений
-    private static final String ACCOUNTS_HEADER = "\nАккаунты пользователя %s:";
+    private static final String ACCOUNTS_HEADER = "\nAccounts for user: %s";
     private static final String NO_ACCOUNTS_FOUND = "  No accounts found";
-    private static final String ACCOUNT_DISPLAY = "  ID: %s, Баланс: %.2f";
+    private static final String ACCOUNT_DISPLAY = "  ID: %s, Balance: %.2f";
     private static final String TRANSFER_TEMPLATE = "Amount %.2f transferred from account %s to account %s";
     private static final String TRANSFER_WITH_COMMISSION = "Amount %.2f transferred from account %s to account %s (commission: %.2f)";
     private static final String DEPOSIT_TEMPLATE = "Amount %.2f deposited to account %s";

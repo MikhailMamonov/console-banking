@@ -40,7 +40,7 @@ public class User {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append(String.format("\nUser{id=%s, login='%s'\n", id, login));
+        sb.append(String.format("User{id=%s, login='%s'", id, login));
         sb.append("  Accounts:\n");
 
         if (accountList == null || accountList.isEmpty()) {
