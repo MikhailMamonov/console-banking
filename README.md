@@ -19,43 +19,63 @@
 - **Jakarta Annotation API** для аннотаций
 
 ## 📁 Структура проекта
-
-console-banking/
-├── src/
-│ ├── main/
-│ │ ├── java/
-│ │ │ └── com/example/banking/
-│ │ │ ├── Application.java # Точка входа
-│ │ │ ├── config/
-│ │ │ │ └── SpringConfig.java # Конфигурация Spring
-│ │ │ ├── console/
-│ │ │ │ ├── OperationCommand.java # Интерфейс команд
-│ │ │ │ ├── ConsoleOperation.java # Enum операций
-│ │ │ │ └── command/
-│ │ │ │ ├── BaseCommand.java # Базовый класс команд
-│ │ │ │ └── *Command.java # Реализации команд
-│ │ │ ├── model/
-│ │ │ │ └── entity/
-│ │ │ │ ├── User.java # Модель пользователя
-│ │ │ │ └── Account.java # Модель счета
-│ │ │ ├── service/
-│ │ │ │ ├── AccountService.java # Интерфейс сервиса счетов
-│ │ │ │ ├── AccountServiceImpl.java # Реализация сервиса счетов
-│ │ │ │ ├── UserService.java # Интерфейс сервиса пользователей
-│ │ │ │ ├── UserServiceImpl.java # Реализация сервиса пользователей
-│ │ │ │ ├── ConfigService.java # Сервис конфигурации
-│ │ │ │ ├── ConsoleInputService.java # Ввод с консоли
-│ │ │ │ ├── IdGeneratorService.java # Генерация ID
-│ │ │ │ ├── AccountLogger.java # Логирование операций
-│ │ │ │ ├── AccountTransactionProcessor.java # Обработка транзакций
-│ │ │ │ └── OperationsConsoleListener.java # Обработка команд
-│ │ │ └── exception/
-│ │ │ ├── BankingException.java # Основное исключение
-│ │ │ └── ErrorType.java # Типы ошибок
-│ │ └── resources/
-│ │ └── application.properties # Настройки приложения
-└── pom.xml # Maven конфигурация
-
+ ```text
+📁 console-banking/
+│
+├── 📄 pom.xml                                    # 📦 Maven конфигурация
+│
+└── 📁 src/
+    └── 📁 main/
+        │
+        ├── 📁 java/
+        │   └── 📁 com/
+        │       └── 📁 example/
+        │           └── 📁 banking/
+        │               │
+        │               ├── 📄 Application.java                     # 🚀 Точка входа
+        │               │
+        │               ├── 📁 config/
+        │               │   └── 📄 SpringConfig.java               # ⚙️ Конфигурация Spring
+        │               │
+        │               ├── 📁 console/
+        │               │   ├── 📄 OperationCommand.java           # 🎮 Интерфейс команд
+        │               │   ├── 📄 ConsoleOperation.java           # 📋 Enum операций
+        │               │   └── 📁 command/
+        │               │       ├── 📄 BaseCommand.java            # 🏛️ Базовый класс
+        │               │       ├── 📄 CreateUserCommand.java
+        │               │       ├── 📄 ShowAllUsersCommand.java
+        │               │       ├── 📄 ShowUserAccountsCommand.java
+        │               │       ├── 📄 CreateAccountCommand.java
+        │               │       ├── 📄 CloseAccountCommand.java
+        │               │       ├── 📄 DepositCommand.java
+        │               │       ├── 📄 WithdrawCommand.java
+        │               │       ├── 📄 TransferCommand.java
+        │               │       └── 📄 ExitCommand.java
+        │               │
+        │               ├── 📁 model/
+        │               │   └── 📁 entity/
+        │               │       ├── 📄 User.java                  # 👤 Модель пользователя
+        │               │       └── 📄 Account.java               # 💰 Модель счета
+        │               │
+        │               ├── 📁 service/
+        │               │   ├── 📄 AccountService.java            # 📋 Интерфейс счетов
+        │               │   ├── 📄 AccountServiceImpl.java        # 🔧 Реализация счетов
+        │               │   ├── 📄 UserService.java               # 📋 Интерфейс пользователей
+        │               │   ├── 📄 UserServiceImpl.java           # 🔧 Реализация пользователей
+        │               │   ├── 📄 ConfigService.java             # ⚙️ Сервис конфигурации
+        │               │   ├── 📄 ConsoleInputService.java       # ⌨️ Ввод с консоли
+        │               │   ├── 📄 IdGeneratorService.java        # 🔑 Генерация ID
+        │               │   ├── 📄 AccountLogger.java             # 📝 Логирование
+        │               │   ├── 📄 AccountTransactionProcessor.java # 💳 Обработка транзакций
+        │               │   └── 📄 OperationsConsoleListener.java  # 🎯 Обработка команд
+        │               │
+        │               └── 📁 exception/
+        │                   ├── 📄 BankingException.java          # ❌ Основное исключение
+        │                   └── 📄 ErrorType.java                 # 📋 Типы ошибок
+        │
+        └── 📁 resources/
+            └── 📄 application.properties                          # ⚙️ Настройки приложения
+```
 ## 🚀 Установка и запуск
 
 ### Требования
