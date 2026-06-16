@@ -89,6 +89,13 @@ public class AccountLogger {
     }
 
     /**
+     * Логирует создание аккаунта
+     * */
+    public void logAccountCreation(Account account) {
+        System.out.printf("✅ Account created: ID=%s, UserID=%s, Balance=%.2f%n",
+                account.getId(), account.getUserId(), account.getMoneyAmount());
+    }
+    /**
      * Логирует закрытие счета
      */
     public void logAccountClosure(String closedId, String targetId) {

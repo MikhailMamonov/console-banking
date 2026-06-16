@@ -3,35 +3,23 @@ package com.example.banking.model.entity;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 
 public class Account {
-<<<<<<< Updated upstream
+
+    private static AtomicLong idGenerator = new AtomicLong(1);
     private String id;
     private String userId;
     private double moneyAmount;
 
-=======
+    public Account(String userId, double moneyAmount) {
+        this.id = String.valueOf(idGenerator.getAndIncrement());
+        this.userId = userId;
+        this.moneyAmount = moneyAmount;
+    }
 
-    private final String id;
-    private String userId;
-    private double moneyAmount;
-
-    public Account(String userId, double moneyAmount, String id) {
-
-        if (userId == null || userId.trim().isEmpty()) {
-            throw new IllegalArgumentException("UserId cannot be null or empty");
-        }
-
-        if (moneyAmount <= 0) {
-            throw new IllegalArgumentException("The amount must be greater than 0");
-        }
-
-        if (id == null || id.trim().isEmpty()) {
-            throw new IllegalArgumentException("ID cannot be null or empty");
-        }
->>>>>>> Stashed changes
-
+    public Account(String id, String userId, double moneyAmount) {
         this.id = id;
         this.userId = userId;
         this.moneyAmount = moneyAmount;
@@ -41,8 +29,16 @@ public class Account {
         return id;
     }
 
+    public void setId(String id) {
+        this.id = id;
+    }
+
     public String getUserId() {
         return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
     }
 
     public double getMoneyAmount() {
@@ -51,5 +47,11 @@ public class Account {
 
     public void setMoneyAmount(double moneyAmount) {
         this.moneyAmount = moneyAmount;
+    }
+
+    @java.lang.Override
+    public java.lang.String toString() {
+        return String.format("Account{id=%s, userId=%s, moneyAmount=%.2f}",
+                id, userId, moneyAmount);
     }
 }

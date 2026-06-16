@@ -1,37 +1,21 @@
 package com.example.banking.service;
 
+import com.example.banking.exception.ErrorHandler;
 import com.example.banking.model.entity.Account;
 import com.example.banking.model.entity.User;
+import com.example.banking.exception.BankingException;
+import com.example.banking.exception.ErrorType;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;  // ← ДОБАВИТЬ ЭТОТ ИМПОРТ
 
 @Service
 public class AccountService {
-    @Autowired
-    private UserService userService;
 
-<<<<<<< Updated upstream
-    public Account createAccount(String id, String userId, double moneyAmount) {
-        Account account = new Account(id, userId, moneyAmount);
-
-        userService.findUserById(userId).ifPresent(user -> {
-            user.getAccountList().add(account);
-            System.out.println("Аккаунт " + id + " привязан к пользователю " + user.getLogin());
-        });
-
-        return account;
-    }
-
-    public void showUserAccounts(String userId){
-        userService.findUserById(userId).ifPresent(user -> {
-            System.out.println("\nАккаунты пользователя " + user.getLogin() + ":");
-            user.getAccountList().forEach(account ->   System.out.println("  ID: " + account.getId() +
-                                                            ", Баланс: " + account.getMoneyAmount()));
-=======
     private static final double DEFAULT_BALANCE_ON_ERROR = 0.0;
     private static final String CONFIGURATION_ERROR_CONTEXT = "CONFIGURATION";
     private static final String CREATE_ACCOUNT_CONTEXT = "CREATE_ACCOUNT";
@@ -41,6 +25,9 @@ public class AccountService {
     private static final String CLOSE_ACCOUNT_CONTEXT = "CLOSE_ACCOUNT";
     private static final String SHOW_ACCOUNTS_CONTEXT = "SHOW_ACCOUNTS";
 
+    @Autowired
+    private UserService userService;
+
     @Value("${account.default-amount:0.0}")
     private String defaultAmount;
 
@@ -48,18 +35,21 @@ public class AccountService {
     private String transferCommission;
 
     private final IdGeneratorService idGeneratorService;
-
     private final AccountTransactionProcessor transactionProcessor;
     private final AccountLogger accountLogger;
-
+    private final ErrorHandler errorHandler;
 
     public AccountService(AccountTransactionProcessor transactionProcessor,
                           AccountLogger accountLogger,
-                          IdGeneratorService idGeneratorService) {
+                          IdGeneratorService idGeneratorService,
+                          ErrorHandler errorHandler) {
         this.transactionProcessor = transactionProcessor;
         this.accountLogger = accountLogger;
         this.idGeneratorService = idGeneratorService;
+        this.errorHandler = errorHandler;
     }
+
+    // === Вспомогательные методы ===
 
     private double getDefaultAmount() {
         try {
@@ -81,41 +71,16 @@ public class AccountService {
         }
     }
 
-    public Account createAccountForUser(String userId) {
-        return executeWithErrorHandling(CREATE_ACCOUNT_CONTEXT, () -> {
-            validateNotEmpty(userId, "User ID", CREATE_ACCOUNT_CONTEXT);
-            User user = findUserOrThrow(userId, CREATE_ACCOUNT_CONTEXT);
-            Account account = createAccount(userId, null);
-            user.getAccountList().add(account); // КЛЮЧЕВОЕ: связываем аккаунт с пользователем
-            return account;
-        });
+    private User findUserOrThrow(String userId, String operationType) {
+        return userService.findUserById(userId)
+                .orElseThrow(() -> new BankingException(operationType, ErrorType.USER_NOT_FOUND,
+                        String.format("User with ID %s not found", userId)));
     }
 
-    public Account createAccount(String userId, Double moneyAmount) {
-        return executeWithErrorHandling(CREATE_ACCOUNT_CONTEXT, () -> {
-            double balance = (moneyAmount != null) ? moneyAmount : getDefaultAmount();
-            String accountId = idGeneratorService.generateAccountId();
-
-            return new Account(userId, balance, accountId);
-        });
-    }
-
-    public void showUserAccounts(String userId) {
-        executeVoidWithErrorHandling(SHOW_ACCOUNTS_CONTEXT, () -> {
-            User user = findUserOrThrow(userId, SHOW_ACCOUNTS_CONTEXT);
-            accountLogger.logUserAccounts(user);
->>>>>>> Stashed changes
-        });
-
-    }
-
-    public void deposit(String accountId, double amount) {
-<<<<<<< Updated upstream
-        findAccountById(accountId).ifPresent(account -> {
-            double newBalance = account.getMoneyAmount() + amount;
-            account.setMoneyAmount(newBalance);
-            System.out.println("Счет пополнен. Новый баланс: " + newBalance);
-        });
+    private Account findAccountOrThrow(String accountId, String operationType) {
+        return findAccountById(accountId)
+                .orElseThrow(() -> new BankingException(operationType, ErrorType.ACCOUNT_NOT_FOUND,
+                        String.format("Account with ID %s not found", accountId)));
     }
 
     private Optional<Account> findAccountById(String accountId) {
@@ -125,17 +90,107 @@ public class AccountService {
                 .findFirst();
     }
 
-    public boolean closeAccount(String accountId) {
-
-        if (accountId == null || accountId.trim().isEmpty()) {
-            System.out.println("Invalid account ID: "+ accountId);
-            return false;
+    private void validateNotEmpty(String value, String fieldName, String operationType) {
+        if (value == null || value.trim().isEmpty()) {
+            throw new BankingException(operationType, ErrorType.VALIDATION_ERROR,
+                    String.format("%s cannot be empty", fieldName));
         }
-        Optional<Account> optionalAccount = findAccountById(accountId);
-        if (optionalAccount.isEmpty()) {
-            System.out.println("Account not found ID: "+ accountId);
-            return false;
-=======
+    }
+
+    private void validatePositiveAmount(double amount, String operationType) {
+        if (amount <= 0) {
+            throw new BankingException(operationType, ErrorType.VALIDATION_ERROR,
+                    String.format("Amount must be positive: %.2f", amount));
+        }
+    }
+
+    private void validateCommonParameters(String accountId, double amount, String operationType) {
+        validateNotEmpty(accountId, "Account ID", operationType);
+        validatePositiveAmount(amount, operationType);
+    }
+
+    private void validateCondition(boolean condition, String message, String operationType) {
+        if (!condition) {
+            throw new BankingException(operationType, ErrorType.VALIDATION_ERROR, message);
+        }
+    }
+
+    private void validateSufficientFunds(Account account, double requiredAmount, double commission) {
+        if (account.getMoneyAmount() < requiredAmount) {
+            String message = buildInsufficientFundsMessage(account.getMoneyAmount(), requiredAmount, commission);
+            throw new BankingException(TRANSFER_CONTEXT, ErrorType.INSUFFICIENT_FUNDS, message);
+        }
+    }
+
+    private String buildInsufficientFundsMessage(double available, double required, double commission) {
+        if (commission > 0) {
+            return String.format("Insufficient funds! Available: %.2f, Required: %.2f (amount: %.2f + commission: %.2f)",
+                    available, required, required - commission, commission);
+        }
+        return String.format("Insufficient funds! Available: %.2f, Required: %.2f", available, required);
+    }
+
+    private <T> T executeWithErrorHandling(String operationType, Supplier<T> action) {
+        try {
+            return action.get();
+        } catch (BankingException e) {
+            throw e;
+        } catch (Exception e) {
+            errorHandler.handleError(operationType, "Unexpected error: " + e.getMessage());
+            throw new BankingException(operationType, ErrorType.SYSTEM_ERROR, e.getMessage());
+        }
+    }
+
+    private void executeVoidWithErrorHandling(String operationType, Runnable action) {
+        try {
+            action.run();
+        } catch (BankingException e) {
+            throw e;
+        } catch (Exception e) {
+            errorHandler.handleError(operationType, "Unexpected error: " + e.getMessage());
+            throw new BankingException(operationType, ErrorType.SYSTEM_ERROR, e.getMessage());
+        }
+    }
+
+    // === Публичные методы ===
+
+    public Account createAccountForUser(String userId) {
+        return executeWithErrorHandling(CREATE_ACCOUNT_CONTEXT, () -> {
+            validateNotEmpty(userId, "User ID", CREATE_ACCOUNT_CONTEXT);
+            User user = findUserOrThrow(userId, CREATE_ACCOUNT_CONTEXT);
+            Account account = createAccount(userId, null);
+            user.getAccountList().add(account);
+            accountLogger.logAccountCreation(account);
+            return account;
+        });
+    }
+
+    public Account createAccount(String userId, Double moneyAmount) {
+        return executeWithErrorHandling(CREATE_ACCOUNT_CONTEXT, () -> {
+            double balance = (moneyAmount != null) ? moneyAmount : getDefaultAmount();
+            String accountId = idGeneratorService.generateAccountId();
+            return new Account(accountId, userId, balance);  // ← ИСПРАВЛЕН ПОРЯДОК ПАРАМЕТРОВ
+        });
+    }
+
+    // Метод для обратной совместимости (из старой версии)
+    public Account createAccount(String id, String userId, double moneyAmount) {
+        Account account = new Account(id, userId, moneyAmount);
+        userService.findUserById(userId).ifPresent(user -> {
+            user.getAccountList().add(account);
+            accountLogger.logAccountCreation(account);
+        });
+        return account;
+    }
+
+    public void showUserAccounts(String userId) {
+        executeVoidWithErrorHandling(SHOW_ACCOUNTS_CONTEXT, () -> {
+            User user = findUserOrThrow(userId, SHOW_ACCOUNTS_CONTEXT);
+            accountLogger.logUserAccounts(user);
+        });
+    }
+
+    public void deposit(String accountId, double amount) {
         executeVoidWithErrorHandling(DEPOSIT_CONTEXT, () -> {
             validateCommonParameters(accountId, amount, DEPOSIT_CONTEXT);
             Account account = findAccountOrThrow(accountId, DEPOSIT_CONTEXT);
@@ -148,31 +203,23 @@ public class AccountService {
         executeVoidWithErrorHandling(WITHDRAW_CONTEXT, () -> {
             validateCommonParameters(accountId, amount, WITHDRAW_CONTEXT);
             Account account = findAccountOrThrow(accountId, WITHDRAW_CONTEXT);
-
             validateCondition(account.getMoneyAmount() >= amount,
                     String.format("Insufficient funds! Available: %.2f, Required: %.2f",
                             account.getMoneyAmount(), amount), WITHDRAW_CONTEXT);
-
             transactionProcessor.processWithdrawal(account, amount);
             accountLogger.logWithdrawal(accountId, amount);
         });
     }
 
-
     public void transfer(String sourceId, String targetId, double amount) {
         executeVoidWithErrorHandling(TRANSFER_CONTEXT, () -> {
             validateTransferParameters(sourceId, targetId, amount);
-
             Account sourceAccount = findAccountOrThrow(sourceId, TRANSFER_CONTEXT);
             Account targetAccount = findAccountOrThrow(targetId, TRANSFER_CONTEXT);
-
             boolean isSameUser = sourceAccount.getUserId().equals(targetAccount.getUserId());
-            double commission = isSameUser ? DEFAULT_BALANCE_ON_ERROR: getTransferCommission();
+            double commission = isSameUser ? 0.0 : getTransferCommission();  // ← ИСПРАВЛЕНО
             double totalRequired = amount + commission;
-
             validateSufficientFunds(sourceAccount, totalRequired, commission);
-
-            // Передаем комиссию в процессор
             transactionProcessor.processTransfer(sourceAccount, targetAccount, amount, commission);
             accountLogger.logTransfer(sourceId, targetId, amount, commission);
         });
@@ -184,22 +231,13 @@ public class AccountService {
         validatePositiveAmount(amount, TRANSFER_CONTEXT);
     }
 
-    private void validateSufficientFunds(Account account, double requiredAmount, double commission) {
-        if (account.getMoneyAmount() < requiredAmount) {
-            String message = buildInsufficientFundsMessage(account.getMoneyAmount(), requiredAmount, commission);
-            throw new BankingException(TRANSFER_CONTEXT, ErrorType.INSUFFICIENT_FUNDS, message);
-        }
-    }
-
     public void closeAccount(String accountId, String targetAccountId) {
         executeVoidWithErrorHandling(CLOSE_ACCOUNT_CONTEXT, () -> {
             validateNotEmpty(accountId, "Account ID", CLOSE_ACCOUNT_CONTEXT);
-
             Account accountToClose = findAccountOrThrow(accountId, CLOSE_ACCOUNT_CONTEXT);
             User user = findUserOrThrow(accountToClose.getUserId(), CLOSE_ACCOUNT_CONTEXT);
             List<Account> userAccounts = user.getAccountList();
 
-            // Валидации
             validateCondition(userAccounts.size() > 1,
                     "Cannot close the only account. User must have at least one account.",
                     CLOSE_ACCOUNT_CONTEXT);
@@ -208,13 +246,9 @@ public class AccountService {
                     String.format("Cannot close account with negative balance: %.2f",
                             accountToClose.getMoneyAmount()), CLOSE_ACCOUNT_CONTEXT);
 
-            // Поиск целевого счета
             Account targetAccount = findTargetAccount(userAccounts, accountId, targetAccountId, CLOSE_ACCOUNT_CONTEXT);
-
-            // Перевод средств
             transferFunds(accountToClose, targetAccount);
 
-            // Удаление счета
             boolean removed = userAccounts.removeIf(acc -> acc.getId().equals(accountId));
             validateCondition(removed, "Failed to remove account " + accountId, CLOSE_ACCOUNT_CONTEXT);
 
@@ -225,7 +259,6 @@ public class AccountService {
     private Account findTargetAccount(List<Account> accounts, String accountIdToClose,
                                       String preferredTargetId, String operationType) {
         if (preferredTargetId != null && !preferredTargetId.trim().isEmpty()) {
-            // Проверка, что не пытаемся перевести на тот же счет
             if (preferredTargetId.equals(accountIdToClose)) {
                 throw new BankingException(operationType, ErrorType.VALIDATION_ERROR,
                         "Cannot transfer funds to the same account being closed");
@@ -233,84 +266,33 @@ public class AccountService {
             return accounts.stream()
                     .filter(acc -> acc.getId().equals(preferredTargetId))
                     .findFirst()
-                    .orElseThrow(() -> new BankingException(operationType, ErrorType.NOT_FOUND,
+                    .orElseThrow(() -> new BankingException(operationType, ErrorType.ACCOUNT_NOT_FOUND,
                             String.format("Target account %s not found", preferredTargetId)));
->>>>>>> Stashed changes
         }
+        return accounts.stream()
+                .filter(acc -> !acc.getId().equals(accountIdToClose))
+                .findFirst()
+                .orElseThrow(() -> new BankingException(operationType, ErrorType.ACCOUNT_NOT_FOUND,
+                        "No target account available"));
+    }
 
-        Account account = optionalAccount.get();
-
-<<<<<<< Updated upstream
-        Optional<User> optionalUser = userService.findUserById(account.getUserId());
-        if (optionalUser.isEmpty()) {
-            System.out.println("User not found for account: "+ accountId);
-            return false;
-        }
-
-        User user = optionalUser.get();
-        List<Account> accountList = user.getAccountList();
-
-        // 4. Проверка количества счетов
-        if (accountList.size() <= 1) {
-            System.out.println("Cannot close the only account. User must have at least one account.");
-            return false;
-        }
-
-        // 5. Проверка баланса
-        if (account.getMoneyAmount() < 0) {
-            System.out.printf("Cannot close account with negative balance: %.2f%n", account.getMoneyAmount());
-            return false;
-        }
-
-        // 6. Находим целевой счет (первый, не закрываемый)
-        Account targetAccount = null;
-        for (Account acc : accountList) {
-            if (!acc.getId().equals(accountId)) {
-                targetAccount = acc;
-                break;
-            }
-        }
-
-        if (targetAccount == null) {
-            System.out.println("Target account not found despite size > 1 for user: "+ user.getId());
-            return false;
-        }
-
-        // 7. Перевод средств
-        double balanceToTransfer = account.getMoneyAmount();
-        if (balanceToTransfer > 0) {
-            double newBalance = targetAccount.getMoneyAmount() + balanceToTransfer;
-            targetAccount.setMoneyAmount(newBalance);
-            System.out.printf("Transferred %.2f from account %s to account %s%n",
-                    balanceToTransfer, accountId, targetAccount.getId());
-=======
     private void transferFunds(Account source, Account target) {
         double amount = source.getMoneyAmount();
         if (amount > DEFAULT_BALANCE_ON_ERROR) {
             target.setMoneyAmount(target.getMoneyAmount() + amount);
             source.setMoneyAmount(0.0);
-            // Комиссия при закрытии счета не взимается
             accountLogger.logFundsTransfer(amount, source.getId(), target.getId());
->>>>>>> Stashed changes
         }
+    }
 
-<<<<<<< Updated upstream
-        // 8. Удаление счета
-        boolean removed = accountList.removeIf(item -> item.getId().equals(accountId));
-
-        if (!removed) {
-            System.out.printf("Failed to remove account %s from user %s", accountId, user.getId());
+    // Метод для обратной совместимости (из старой версии)
+    public boolean closeAccount(String accountId) {
+        try {
+            closeAccount(accountId, null);
+            return true;
+        } catch (Exception e) {
+            errorHandler.handleError(CLOSE_ACCOUNT_CONTEXT, "Failed to close account: " + e.getMessage());
             return false;
         }
-
-        return true;
-=======
-    private String buildInsufficientFundsMessage(double available, double required, double commission) {
-        if (commission > 0) {
-            return String.format("Insufficient funds! Available: %.2f, Required: %.2f (amount: %.2f + commission: %.2f)",
-                    available, required, required - commission, commission);
-        }
-        return String.format("Insufficient funds! Available: %.2f, Required: %.2f", available, required);
->>>>>>> Stashed changes
     }
 }

@@ -34,19 +34,13 @@ public class UserService {
     private final AccountLogger accountLogger;
     private final IdGeneratorService idGeneratorService;
 
-<<<<<<< Updated upstream
-    public User createUser(String id, String login, List<Account> accounts) {
-        User user = new User(id, login, accounts);
-        users.add(user);
-        System.out.println("Пользователь " + login + " успешно создан!");
-=======
     /**
      * Конструктор сервиса пользователей.
      *
      * @param accountLogger логгер для записи операций с пользователями
      * @param idGeneratorService сервис для генерации уникальных ID пользователей
      */
-    public UserService(AccountLogger accountLogger,IdGeneratorService idGeneratorService) {
+    public UserService(AccountLogger accountLogger, IdGeneratorService idGeneratorService) {
         this.accountLogger = accountLogger;
         this.idGeneratorService = idGeneratorService;
     }
@@ -79,7 +73,6 @@ public class UserService {
 
         accountLogger.logUserCreated(user);
 
->>>>>>> Stashed changes
         return user;
     }
 
@@ -154,7 +147,6 @@ public class UserService {
                 .findFirst();
     }
 
-
     public Optional<User> findUserByLogin(String login) {
         return users.stream()
                 .filter(user -> user.getLogin().equals(login))
@@ -191,16 +183,8 @@ public class UserService {
             accountLogger.logUserDeleted(userToDelete.get());
             return true;
         } else {
-<<<<<<< Updated upstream
-            System.out.println("\n=== СПИСОК ПОЛЬЗОВАТЕЛЕЙ ===");
-            users.forEach(user -> {
-                System.out.println("ID: " + user.getId() + ", Логин: " + user.getLogin());
-                System.out.println("  Аккаунтов: " + user.getAccountList().size());
-            });
-=======
             accountLogger.logUserNotFound(userId);
             return false;
->>>>>>> Stashed changes
         }
     }
 
@@ -210,18 +194,22 @@ public class UserService {
                     "New login cannot be null or empty");
         }
 
-        if (!newLogin.equals(findUserById(userId).get().getLogin())
-                && isLoginExists(newLogin)) {
+        Optional<User> userOpt = findUserById(userId);
+        if (userOpt.isEmpty()) {
+            throw new BankingException("USER_UPDATE", ErrorType.USER_NOT_FOUND,
+                    String.format("User with ID '%s' not found", userId));
+        }
+
+        User user = userOpt.get();
+        if (!newLogin.equals(user.getLogin()) && isLoginExists(newLogin)) {
             throw new BankingException("USER_UPDATE", ErrorType.VALIDATION_ERROR,
                     String.format("Login '%s' is already taken", newLogin));
         }
 
-        return findUserById(userId).map(user -> {
-            String oldLogin = user.getLogin();
-            user.setLogin(newLogin);
-            accountLogger.logUserLoginUpdated(oldLogin, newLogin);
-            return user;
-        });
+        String oldLogin = user.getLogin();
+        user.setLogin(newLogin);
+        accountLogger.logUserLoginUpdated(oldLogin, newLogin);
+        return Optional.of(user);
     }
 
     public int getTotalUserCount() {
@@ -233,6 +221,4 @@ public class UserService {
         users.clear();
         accountLogger.logAllUsersCleared(count);
     }
-
-
 }

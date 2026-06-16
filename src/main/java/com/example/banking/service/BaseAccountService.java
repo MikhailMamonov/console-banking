@@ -15,7 +15,6 @@ import static com.example.banking.util.ValidationUtils.*;
 
 public abstract class BaseAccountService {
 
-
     @Autowired
     protected UserService userService;
 
@@ -34,23 +33,13 @@ public abstract class BaseAccountService {
         }
     }
 
-    protected void executeVoidWithErrorHandling(String operationType, Runnable action) {
+    protected void executeVoidWithErrorHandling(String operationType, Runnable operation) {
         try {
-            action.run();
+            operation.run();
         } catch (BankingException e) {
-            // Очищаем консоль или добавляем перенос строки перед ошибкой
-            System.err.println(); // Пустая строка перед ошибкой
-            System.err.printf("❌ Error in %s: %s%n", e.getOperationType(), e.getMessage());
-
-            // Дополнительная информация об ошибке
-            if (e.getErrorType() != null) {
-                System.err.printf("   Error type: %s%n", e.getErrorType());
-            }
-
+            errorHandler.handleError(e);
         } catch (Exception e) {
-            System.err.println();
-            System.err.printf("❌ Unexpected error in %s: %s%n", operationType, e.getMessage());
-            e.printStackTrace();
+            errorHandler.handleError(operationType, "Unexpected error: " + e.getMessage());
         }
     }
 
