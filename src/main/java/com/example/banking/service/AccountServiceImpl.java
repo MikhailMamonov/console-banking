@@ -4,195 +4,207 @@ import com.example.banking.exception.BankingException;
 import com.example.banking.exception.ErrorType;
 import com.example.banking.model.entity.Account;
 import com.example.banking.model.entity.User;
+import com.example.banking.repository.AccountRepository;
+import com.example.banking.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Implementation of AccountService with built-in validation.
+ * Implementation of AccountService with PostgreSQL integration.
  */
 @Service
 public class AccountServiceImpl implements AccountService {
 
     private static final double DEFAULT_BALANCE_ON_ERROR = 0.0;
 
-    @Value("${account.default-amount:0.0}")
-    private String defaultAmount;
+// Сразу считываем настройки как double, избавляясь от String и parseDouble
+@Value("${account.default-amount:0.0}")
+private double defaultAmount;
 
-    @Value("${account.transfer-commission:0.0}")
-    private String transferCommission;
+@Value("${account.transfer-commission:0.0}")
+private double transferCommission;
 
-    private final AtomicLong idCounter = new AtomicLong(100000);
+private final AtomicLong idCounter = new AtomicLong(100000);
 
-    private final UserService userService;
-    private final AccountTransactionProcessor transactionProcessor;
-    private final AccountLogger accountLogger;
-    private final AccountValidator accountValidator;
+private final UserRepository userRepository;
+private final AccountRepository accountRepository;
+private final AccountTransactionProcessor transactionProcessor;
+private final AccountLogger accountLogger;
+private final AccountValidator accountValidator;
 
-    public AccountServiceImpl(UserService userService,
-                              AccountTransactionProcessor transactionProcessor,
-                              AccountLogger accountLogger,
-                              AccountValidator accountValidator) {
-        this.userService = userService;
-        this.transactionProcessor = transactionProcessor;
-        this.accountLogger = accountLogger;
-        this.accountValidator = accountValidator;
-    }
+public AccountServiceImpl(UserRepository userRepository,
+                          AccountRepository accountRepository,
+                          AccountTransactionProcessor transactionProcessor,
+                          AccountLogger accountLogger,
+                          AccountValidator accountValidator) {
+    this.userRepository = userRepository;
+    this.accountRepository = accountRepository;
+    this.transactionProcessor = transactionProcessor;
+    this.accountLogger = accountLogger;
+    this.accountValidator = accountValidator;
+}
 
-    // === Helper Methods ===
+// === Helper Methods ===
 
-    private double getDefaultAmount() {
-        try {
-            return Double.parseDouble(defaultAmount);
-        } catch (NumberFormatException e) {
-            return DEFAULT_BALANCE_ON_ERROR;
-        }
-    }
+private User findUserOrThrow(String userId) {
+    return userRepository.findById(userId)
+            .orElseThrow(() -> new BankingException("ACCOUNT_OPERATION", ErrorType.USER_NOT_FOUND,
+                    String.format("User with ID %s not found", userId)));
+}
 
-    private double getTransferCommission() {
-        try {
-            return Double.parseDouble(transferCommission);
-        } catch (NumberFormatException e) {
-            return DEFAULT_BALANCE_ON_ERROR;
-        }
-    }
+private Account findAccountOrThrow(String accountId) {
+    return findAccountById(accountId)
+            .orElseThrow(() -> new BankingException("ACCOUNT_OPERATION", ErrorType.ACCOUNT_NOT_FOUND,
+                    String.format("Account with ID %s not found", accountId)));
+}
 
-    private User findUserOrThrow(String userId) {
-        return userService.findUserOrThrow(userId);
-    }
+private Optional<Account> findAccountById(String accountId) {
+    // Прямой быстрый поиск в базе по первичному ключу вместо стримов
+    return accountRepository.findById(accountId);
+}
 
-    private Account findAccountOrThrow(String accountId) {
-        return findAccountById(accountId)
-                .orElseThrow(() -> new BankingException("ACCOUNT_OPERATION", ErrorType.ACCOUNT_NOT_FOUND,
-                        String.format("Account with ID %s not found", accountId)));
-    }
-
-    private Optional<Account> findAccountById(String accountId) {
-        return userService.getAllUsers().stream()
-                .flatMap(user -> user.getAccountList().stream())
-                .filter(account -> account.getId().equals(accountId))
-                .findFirst();
-    }
-
-    private Account findTargetAccount(List<Account> accounts, String accountIdToClose, String preferredTargetId) {
-        if (preferredTargetId != null && !preferredTargetId.trim().isEmpty()) {
-            if (preferredTargetId.equals(accountIdToClose)) {
-                throw new BankingException("CLOSE_ACCOUNT", ErrorType.VALIDATION_ERROR,
-                        "Cannot transfer funds to the same account being closed");
-            }
-            return accounts.stream()
-                    .filter(acc -> acc.getId().equals(preferredTargetId))
-                    .findFirst()
-                    .orElseThrow(() -> new BankingException("CLOSE_ACCOUNT", ErrorType.ACCOUNT_NOT_FOUND,
-                            String.format("Target account %s not found", preferredTargetId)));
+private Account findTargetAccount(List<Account> accounts, String accountIdToClose, String preferredTargetId) {
+    if (preferredTargetId != null && !preferredTargetId.trim().isEmpty()) {
+        if (preferredTargetId.equals(accountIdToClose)) {
+            throw new BankingException("CLOSE_ACCOUNT", ErrorType.VALIDATION_ERROR,
+                    "Cannot transfer funds to the same account being closed");
         }
         return accounts.stream()
-                .filter(acc -> !acc.getId().equals(accountIdToClose))
+                .filter(acc -> acc.getId().equals(preferredTargetId))
                 .findFirst()
                 .orElseThrow(() -> new BankingException("CLOSE_ACCOUNT", ErrorType.ACCOUNT_NOT_FOUND,
-                        "No target account available"));
+                        String.format("Target account %s not found", preferredTargetId)));
     }
+    return accounts.stream()
+            .filter(acc -> !acc.getId().equals(accountIdToClose))
+            .findFirst()
+            .orElseThrow(() -> new BankingException("CLOSE_ACCOUNT", ErrorType.ACCOUNT_NOT_FOUND,
+                    "No target account available"));
+}
 
-    private void transferFunds(Account source, Account target) {
-        double amount = source.getMoneyAmount();
-        if (amount > DEFAULT_BALANCE_ON_ERROR) {
-            target.setMoneyAmount(target.getMoneyAmount() + amount);
-            source.setMoneyAmount(0.0);
-            accountLogger.logFundsTransfer(amount, source.getId(), target.getId());
-        }
+private void transferFunds(Account source, Account target) {
+    double amount = source.getMoneyAmount();
+    if (amount > DEFAULT_BALANCE_ON_ERROR) {
+        target.setMoneyAmount(target.getMoneyAmount() + amount);
+        source.setMoneyAmount(0.0);
+
+        accountRepository.save(source);
+        accountRepository.save(target);
+        accountLogger.logFundsTransfer(amount, source.getId(), target.getId());
     }
+}
 
-    // === Public Methods ===
+// === Public Methods ===
 
-    @Override
-    public Account createAccountForUser(String userId) {
-        accountValidator.validateUser(userId, "CREATE_ACCOUNT_FOR_USER");
+@Override
+@Transactional
+public Account createAccountForUser(String userId) {
+    accountValidator.validateUser(userId, "CREATE_ACCOUNT_FOR_USER");
 
-        User user = findUserOrThrow(userId);
-        Account account = createAccount(userId, null);
-        user.getAccountList().add(account);
-        accountLogger.logAccountCreation(account);
-        return account;
-    }
+    User user = findUserOrThrow(userId);
+    Account account = createAccount(userId, null);
 
-    @Override
-    public Account createAccount(String userId, Double moneyAmount) {
-        accountValidator.validateUser(userId, "CREATE_ACCOUNT");
+    // Из-за каскадности связи сохранение аккаунта обновит и список у пользователя
+    Account savedAccount = accountRepository.save(account);
+    accountLogger.logAccountCreation(savedAccount);
+    return savedAccount;
+}
 
-        double balance = (moneyAmount != null) ? moneyAmount : getDefaultAmount();
-        String accountId = "ACC-" + idCounter.incrementAndGet();
-        return new Account(accountId, userId, balance);
-    }
+@Override
+public Account createAccount(String userId, Double moneyAmount) {
+    accountValidator.validateUser(userId, "CREATE_ACCOUNT");
 
-    @Override
-    public void showUserAccounts(String userId) {
-        accountValidator.validateUser(userId, "SHOW_USER_ACCOUNTS");
+    double balance = (moneyAmount != null) ? moneyAmount : defaultAmount;
+    String accountId = "ACC-" + idCounter.incrementAndGet();
+    return new Account(accountId, userId, balance);
+}
 
-        User user = findUserOrThrow(userId);
-        accountLogger.logUserAccounts(user);
-    }
+@Override
+@Transactional(readOnly = true)
+public void showUserAccounts(String userId) {
+    accountValidator.validateUser(userId, "SHOW_USER_ACCOUNTS");
 
-    @Override
-    public void deposit(String accountId, double amount) {
-        accountValidator.validateTransaction(accountId, amount, "DEPOSIT");
+    User user = findUserOrThrow(userId);
+    accountLogger.logUserAccounts(user);
+}
 
-        Account account = findAccountOrThrow(accountId);
-        transactionProcessor.processDeposit(account, amount);
-        accountLogger.logDeposit(accountId, amount);
-    }
+@Override
+@Transactional
+public void deposit(String accountId, double amount) {
+    accountValidator.validateTransaction(accountId, amount, "DEPOSIT");
 
-    @Override
-    public void withdraw(String accountId, double amount) {
-        accountValidator.validateTransaction(accountId, amount, "WITHDRAW");
+    Account account = findAccountOrThrow(accountId);
+    transactionProcessor.processDeposit(account, amount);
 
-        Account account = findAccountOrThrow(accountId);
-        accountValidator.validateCondition(account.getMoneyAmount() >= amount,
-                String.format("Insufficient funds! Available: %.2f, Required: %.2f",
-                        account.getMoneyAmount(), amount), "WITHDRAW");
-        transactionProcessor.processWithdrawal(account, amount);
-        accountLogger.logWithdrawal(accountId, amount);
-    }
+    accountRepository.save(account); // Синхронизируем баланс с БД
+    accountLogger.logDeposit(accountId, amount);
+}
 
-    @Override
-    public void transfer(String sourceId, String targetId, double amount) {
-        accountValidator.validateTransfer(sourceId, targetId, amount);
+@Override
+@Transactional
+public void withdraw(String accountId, double amount) {
+    accountValidator.validateTransaction(accountId, amount, "WITHDRAW");
 
-        Account sourceAccount = findAccountOrThrow(sourceId);
-        Account targetAccount = findAccountOrThrow(targetId);
-        boolean isSameUser = sourceAccount.getUserId().equals(targetAccount.getUserId());
-        double commission = isSameUser ? 0.0 : getTransferCommission();
-        double totalRequired = amount + commission;
+    Account account = findAccountOrThrow(accountId);
+    accountValidator.validateCondition(account.getMoneyAmount() >= amount,
+            String.format("Insufficient funds! Available: %.2f, Required: %.2f",
+                    account.getMoneyAmount(), amount), "WITHDRAW");
 
-        accountValidator.validateSufficientFunds(sourceAccount, totalRequired, commission);
-        transactionProcessor.processTransfer(sourceAccount, targetAccount, amount, commission);
-        accountLogger.logTransfer(sourceId, targetId, amount, commission);
-    }
+    transactionProcessor.processWithdrawal(account, amount);
 
-    @Override
-    public void closeAccount(String accountId, String targetAccountId) {
-        accountValidator.validateUser(accountId, "CLOSE_ACCOUNT");
+    accountRepository.save(account); // Синхронизируем баланс с БД
+    accountLogger.logWithdrawal(accountId, amount);
+}
 
-        Account accountToClose = findAccountOrThrow(accountId);
-        User user = findUserOrThrow(accountToClose.getUserId());
-        List<Account> userAccounts = user.getAccountList();
+@Override
+@Transactional
+public void transfer(String sourceId, String targetId, double amount) {
+    accountValidator.validateTransfer(sourceId, targetId, amount);
 
-        accountValidator.validateCondition(userAccounts.size() > 1,
-                "Cannot close the only account. User must have at least one account.",
-                "CLOSE_ACCOUNT");
+    Account sourceAccount = findAccountOrThrow(sourceId);
+    Account targetAccount = findAccountOrThrow(targetId);
+    boolean isSameUser = sourceAccount.getUserId().equals(targetAccount.getUserId());
+    double commission = isSameUser ? 0.0 : transferCommission;
+    double totalRequired = amount + commission;
 
-        accountValidator.validateCondition(accountToClose.getMoneyAmount() >= 0,
-                String.format("Cannot close account with negative balance: %.2f",
-                        accountToClose.getMoneyAmount()), "CLOSE_ACCOUNT");
+    accountValidator.validateSufficientFunds(sourceAccount, totalRequired, commission);
+    transactionProcessor.processTransfer(sourceAccount, targetAccount, amount, commission);
 
-        Account targetAccount = findTargetAccount(userAccounts, accountId, targetAccountId);
-        transferFunds(accountToClose, targetAccount);
+    // Сохраняем оба аккаунта
+    accountRepository.save(sourceAccount);
+    accountRepository.save(targetAccount);
 
-        boolean removed = userAccounts.removeIf(acc -> acc.getId().equals(accountId));
-        accountValidator.validateCondition(removed, "Failed to remove account " + accountId, "CLOSE_ACCOUNT");
+    accountLogger.logTransfer(sourceId, targetId, amount, commission);
+}
 
-        accountLogger.logAccountClosure(accountId, targetAccount.getId());
-    }
+@Override
+@Transactional
+public void closeAccount(String accountId, String targetAccountId) {
+    accountValidator.validateUser(accountId, "CLOSE_ACCOUNT");
+
+    Account accountToClose = findAccountOrThrow(accountId);
+    User user = findUserOrThrow(accountToClose.getUserId());
+    List<Account> userAccounts = user.getAccountList();
+
+    accountValidator.validateCondition(userAccounts.size() > 1,
+            "Cannot close the only account. User must have at least one account.",
+            "CLOSE_ACCOUNT");
+
+    accountValidator.validateCondition(accountToClose.getMoneyAmount() >= 0,
+            String.format("Cannot close account with negative balance: %.2f",
+                    accountToClose.getMoneyAmount()), "CLOSE_ACCOUNT");
+
+    Account targetAccount = findTargetAccount(userAccounts, accountId, targetAccountId);
+    transferFunds(accountToClose, targetAccount);
+
+    // Физически удаляем аккаунт из таблицы accounts в PostgreSQL
+    accountRepository.delete(accountToClose);
+
+    accountLogger.logAccountClosure(accountId, targetAccount.getId());
+}
 }

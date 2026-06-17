@@ -3,6 +3,7 @@ package com.example.banking.service;
 import com.example.banking.exception.BankingException;
 import com.example.banking.exception.ErrorType;
 import com.example.banking.model.entity.User;
+import com.example.banking.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -31,9 +32,10 @@ import java.util.concurrent.atomic.AtomicLong;
 @Service
 public class UserServiceImpl implements UserService {
 
-    private final List<User> users = new ArrayList<>();
     private final AccountLogger accountLogger;
     private final UserValidator userValidator;
+    private final UserRepository userRepository;
+
     private final AtomicLong idCounter = new AtomicLong(100000);
 
     /**
@@ -42,7 +44,8 @@ public class UserServiceImpl implements UserService {
      * @param accountLogger логгер для записи операций с пользователями
      * @param userValidator сервис для валидации пользователей
      */
-    public UserServiceImpl(AccountLogger accountLogger, UserValidator userValidator) {
+    public UserServiceImpl(AccountLogger accountLogger, UserValidator userValidator, UserRepository userRepository) {
+        this.userRepository = userRepository;
         this.accountLogger = accountLogger;
         this.userValidator = userValidator;
     }
@@ -51,7 +54,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public boolean isLoginExists(String login) {
-        return findUserByLogin(login).isPresent();
+        return userRepository.existsByLogin(login);
     }
 
     @Override
@@ -61,54 +64,48 @@ public class UserServiceImpl implements UserService {
 
         String userId = "USR-" + idCounter.incrementAndGet();
         User user = new User(userId, login, new ArrayList<>());
-        users.add(user);
+        User savedUser = userRepository.save(user);
 
-        accountLogger.logUserCreated(user);
-
-        return user;
+        accountLogger.logUserCreated(savedUser);
+        return savedUser;
     }
 
     @Override
     public User findUserOrThrow(String userId) {
-        return findUserById(userId)
-                .orElseThrow(() -> new BankingException("USER_OPERATION", ErrorType.USER_NOT_FOUND,
-                        String.format("User with ID '%s' not found", userId)));
+        return userValidator.validateUserPresent(findUserById(userId), userId, "USER_OPERATION");
     }
 
     @Override
     public List<User> getAllUsers() {
-        return new ArrayList<>(users);
+        return userRepository.findAll();
     }
 
     @Override
     public Optional<User> findUserById(String id) {
-        return users.stream()
-                .filter(user -> user.getId().equals(id))
-                .findFirst();
+        return userRepository.findById(id);
     }
 
     @Override
     public Optional<User> findUserByLogin(String login) {
-        return users.stream()
-                .filter(user -> user.getLogin().equals(login))
-                .findFirst();
+        return userRepository.findByLogin(login);
     }
 
     @Override
     public boolean userExists(String id) {
-        return users.stream().anyMatch(user -> user.getId().equals(id));
+        return userRepository.existsById(id);
     }
 
     @Override
     public void showAllUsers() {
-        accountLogger.logAllUsers(users);
+        accountLogger.logAllUsers(userRepository.findAll());
     }
 
     @Override
     public boolean deleteUser(String userId) {
         Optional<User> userToDelete = findUserById(userId);
         if (userToDelete.isPresent()) {
-            users.remove(userToDelete.get());
+            // Удаляем запись из таблицы PostgreSQL
+            userRepository.delete(userToDelete.get());
             accountLogger.logUserDeleted(userToDelete.get());
             return true;
         } else {
@@ -128,20 +125,23 @@ public class UserServiceImpl implements UserService {
 
         String oldLogin = user.getLogin();
         user.setLogin(newLogin);
+        User updatedUser = userRepository.save(user);
         accountLogger.logUserLoginUpdated(oldLogin, newLogin);
 
-        return Optional.of(user);
+        return Optional.of(updatedUser);
     }
 
     @Override
     public int getTotalUserCount() {
-        return users.size();
+        // Подсчет строк в таблице через SQL-запрос COUNT(*)
+        return (int) userRepository.count();
     }
 
     @Override
     public void clearAllUsers() {
-        int count = users.size();
-        users.clear();
+        int count = getTotalUserCount();
+        // Полная очистка таблицы users (и accounts каскадно)
+        userRepository.deleteAll();
         accountLogger.logAllUsersCleared(count);
     }
 }
