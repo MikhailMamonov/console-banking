@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Implementation of UserService for managing bank application users.
@@ -26,71 +27,24 @@ import java.util.Optional;
  * @version 1.0
  * @see User
  * @see AccountLogger
- * @see IdGeneratorService
  */
 @Service
 public class UserServiceImpl implements UserService {
 
     private final List<User> users = new ArrayList<>();
     private final AccountLogger accountLogger;
-    private final IdGeneratorService idGeneratorService;
+    private final UserValidator userValidator;
+    private final AtomicLong idCounter = new AtomicLong(100000);
 
     /**
      * Конструктор сервиса пользователей.
      *
      * @param accountLogger логгер для записи операций с пользователями
-     * @param idGeneratorService сервис для генерации уникальных ID пользователей
+     * @param userValidator сервис для валидации пользователей
      */
-    public UserServiceImpl(AccountLogger accountLogger, IdGeneratorService idGeneratorService) {
+    public UserServiceImpl(AccountLogger accountLogger, UserValidator userValidator) {
         this.accountLogger = accountLogger;
-        this.idGeneratorService = idGeneratorService;
-    }
-
-    // === Validation Methods ===
-
-    /**
-     * Validates the login.
-     *
-     * @param login the login to validate
-     * @throws IllegalArgumentException if login is null, empty, or already exists
-     */
-    private void validateLogin(String login) {
-        if (login == null || login.trim().isEmpty()) {
-            throw new IllegalArgumentException("Login cannot be null or empty");
-        }
-
-        if (findUserByLogin(login).isPresent()) {
-            throw new IllegalArgumentException("User with login '" + login + "' already exists");
-        }
-    }
-
-    /**
-     * Validates that a string is not null or empty.
-     *
-     * @param value the string to validate
-     * @param fieldName the field name for error message
-     * @param operationType the operation type for exception
-     * @throws BankingException if validation fails
-     */
-    private void validateNotEmpty(String value, String fieldName, String operationType) {
-        if (value == null || value.trim().isEmpty()) {
-            throw new BankingException(operationType, ErrorType.VALIDATION_ERROR,
-                    String.format("%s cannot be null or empty", fieldName));
-        }
-    }
-
-    /**
-     * Validates a business condition.
-     *
-     * @param condition the condition to check
-     * @param message the error message
-     * @param operationType the operation type for exception
-     * @throws BankingException if condition is false
-     */
-    private void validateCondition(boolean condition, String message, String operationType) {
-        if (!condition) {
-            throw new BankingException(operationType, ErrorType.VALIDATION_ERROR, message);
-        }
+        this.userValidator = userValidator;
     }
 
     // === Public Methods ===
@@ -102,10 +56,11 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User createUser(String login) {
-        validateLogin(login);
+        userValidator.validateLoginFormat(login);
+        userValidator.validateLoginUniqueness(login, isLoginExists(login));
 
-        String id = idGeneratorService.generateUserId();
-        User user = new User(id, login, new ArrayList<>());
+        String userId = "USR-" + idCounter.incrementAndGet();
+        User user = new User(userId, login, new ArrayList<>());
         users.add(user);
 
         accountLogger.logUserCreated(user);
@@ -164,23 +119,17 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public Optional<User> updateUserLogin(String userId, String newLogin) {
-        validateNotEmpty(newLogin, "New login", "USER_UPDATE");
+        userValidator.validateNotEmpty(newLogin, "New login", "USER_UPDATE");
 
         Optional<User> userOpt = findUserById(userId);
-        if (userOpt.isEmpty()) {
-            throw new BankingException("USER_UPDATE", ErrorType.USER_NOT_FOUND,
-                    String.format("User with ID '%s' not found", userId));
-        }
+        User user = userValidator.validateUserPresent(userOpt, userId, "USER_UPDATE");
 
-        User user = userOpt.get();
-        if (!newLogin.equals(user.getLogin()) && isLoginExists(newLogin)) {
-            throw new BankingException("USER_UPDATE", ErrorType.VALIDATION_ERROR,
-                    String.format("Login '%s' is already taken", newLogin));
-        }
+        userValidator.validateLoginAvailabilityForUpdate(newLogin, user.getLogin(), isLoginExists(newLogin));
 
         String oldLogin = user.getLogin();
         user.setLogin(newLogin);
         accountLogger.logUserLoginUpdated(oldLogin, newLogin);
+
         return Optional.of(user);
     }
 

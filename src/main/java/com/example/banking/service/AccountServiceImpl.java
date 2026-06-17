@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Implementation of AccountService with built-in validation.
@@ -24,56 +25,21 @@ public class AccountServiceImpl implements AccountService {
     @Value("${account.transfer-commission:0.0}")
     private String transferCommission;
 
+    private final AtomicLong idCounter = new AtomicLong(100000);
+
     private final UserService userService;
-    private final IdGeneratorService idGeneratorService;
     private final AccountTransactionProcessor transactionProcessor;
     private final AccountLogger accountLogger;
+    private final AccountValidator accountValidator;
 
     public AccountServiceImpl(UserService userService,
-                              IdGeneratorService idGeneratorService,
                               AccountTransactionProcessor transactionProcessor,
-                              AccountLogger accountLogger) {
+                              AccountLogger accountLogger,
+                              AccountValidator accountValidator) {
         this.userService = userService;
-        this.idGeneratorService = idGeneratorService;
         this.transactionProcessor = transactionProcessor;
         this.accountLogger = accountLogger;
-    }
-
-    // === Validation Methods ===
-
-    private void validateNotEmpty(String value, String fieldName, String operationType) {
-        if (value == null || value.trim().isEmpty()) {
-            throw new BankingException(operationType, ErrorType.VALIDATION_ERROR,
-                    String.format("%s cannot be empty", fieldName));
-        }
-    }
-
-    private void validatePositiveAmount(double amount, String operationType) {
-        if (amount <= 0) {
-            throw new BankingException(operationType, ErrorType.VALIDATION_ERROR,
-                    String.format("Amount must be positive: %.2f", amount));
-        }
-    }
-
-    private void validateTransaction(String accountId, double amount, String operationType) {
-        validateNotEmpty(accountId, "Account ID", operationType);
-        validatePositiveAmount(amount, operationType);
-    }
-
-    private void validateUser(String userId, String operationType) {
-        validateNotEmpty(userId, "User ID", operationType);
-    }
-
-    private void validateTransfer(String sourceId, String targetId, double amount) {
-        validateNotEmpty(sourceId, "Source Account ID", "TRANSFER");
-        validateNotEmpty(targetId, "Target Account ID", "TRANSFER");
-        validatePositiveAmount(amount, "TRANSFER");
-    }
-
-    private void validateCondition(boolean condition, String message, String operationType) {
-        if (!condition) {
-            throw new BankingException(operationType, ErrorType.VALIDATION_ERROR, message);
-        }
+        this.accountValidator = accountValidator;
     }
 
     // === Helper Methods ===
@@ -111,21 +77,6 @@ public class AccountServiceImpl implements AccountService {
                 .findFirst();
     }
 
-    private void validateSufficientFunds(Account account, double requiredAmount, double commission) {
-        if (account.getMoneyAmount() < requiredAmount) {
-            String message = buildInsufficientFundsMessage(account.getMoneyAmount(), requiredAmount, commission);
-            throw new BankingException("TRANSFER", ErrorType.INSUFFICIENT_FUNDS, message);
-        }
-    }
-
-    private String buildInsufficientFundsMessage(double available, double required, double commission) {
-        if (commission > 0) {
-            return String.format("Insufficient funds! Available: %.2f, Required: %.2f (amount: %.2f + commission: %.2f)",
-                    available, required, required - commission, commission);
-        }
-        return String.format("Insufficient funds! Available: %.2f, Required: %.2f", available, required);
-    }
-
     private Account findTargetAccount(List<Account> accounts, String accountIdToClose, String preferredTargetId) {
         if (preferredTargetId != null && !preferredTargetId.trim().isEmpty()) {
             if (preferredTargetId.equals(accountIdToClose)) {
@@ -158,7 +109,7 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     public Account createAccountForUser(String userId) {
-        validateUser(userId, "CREATE_ACCOUNT_FOR_USER");
+        accountValidator.validateUser(userId, "CREATE_ACCOUNT_FOR_USER");
 
         User user = findUserOrThrow(userId);
         Account account = createAccount(userId, null);
@@ -169,16 +120,16 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     public Account createAccount(String userId, Double moneyAmount) {
-        validateUser(userId, "CREATE_ACCOUNT");
+        accountValidator.validateUser(userId, "CREATE_ACCOUNT");
 
         double balance = (moneyAmount != null) ? moneyAmount : getDefaultAmount();
-        String accountId = idGeneratorService.generateAccountId();
+        String accountId = "ACC-" + idCounter.incrementAndGet();
         return new Account(accountId, userId, balance);
     }
 
     @Override
     public void showUserAccounts(String userId) {
-        validateUser(userId, "SHOW_USER_ACCOUNTS");
+        accountValidator.validateUser(userId, "SHOW_USER_ACCOUNTS");
 
         User user = findUserOrThrow(userId);
         accountLogger.logUserAccounts(user);
@@ -186,7 +137,7 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     public void deposit(String accountId, double amount) {
-        validateTransaction(accountId, amount, "DEPOSIT");
+        accountValidator.validateTransaction(accountId, amount, "DEPOSIT");
 
         Account account = findAccountOrThrow(accountId);
         transactionProcessor.processDeposit(account, amount);
@@ -195,10 +146,10 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     public void withdraw(String accountId, double amount) {
-        validateTransaction(accountId, amount, "WITHDRAW");
+        accountValidator.validateTransaction(accountId, amount, "WITHDRAW");
 
         Account account = findAccountOrThrow(accountId);
-        validateCondition(account.getMoneyAmount() >= amount,
+        accountValidator.validateCondition(account.getMoneyAmount() >= amount,
                 String.format("Insufficient funds! Available: %.2f, Required: %.2f",
                         account.getMoneyAmount(), amount), "WITHDRAW");
         transactionProcessor.processWithdrawal(account, amount);
@@ -207,7 +158,7 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     public void transfer(String sourceId, String targetId, double amount) {
-        validateTransfer(sourceId, targetId, amount);
+        accountValidator.validateTransfer(sourceId, targetId, amount);
 
         Account sourceAccount = findAccountOrThrow(sourceId);
         Account targetAccount = findAccountOrThrow(targetId);
@@ -215,24 +166,24 @@ public class AccountServiceImpl implements AccountService {
         double commission = isSameUser ? 0.0 : getTransferCommission();
         double totalRequired = amount + commission;
 
-        validateSufficientFunds(sourceAccount, totalRequired, commission);
+        accountValidator.validateSufficientFunds(sourceAccount, totalRequired, commission);
         transactionProcessor.processTransfer(sourceAccount, targetAccount, amount, commission);
         accountLogger.logTransfer(sourceId, targetId, amount, commission);
     }
 
     @Override
     public void closeAccount(String accountId, String targetAccountId) {
-        validateUser(accountId, "CLOSE_ACCOUNT");
+        accountValidator.validateUser(accountId, "CLOSE_ACCOUNT");
 
         Account accountToClose = findAccountOrThrow(accountId);
         User user = findUserOrThrow(accountToClose.getUserId());
         List<Account> userAccounts = user.getAccountList();
 
-        validateCondition(userAccounts.size() > 1,
+        accountValidator.validateCondition(userAccounts.size() > 1,
                 "Cannot close the only account. User must have at least one account.",
                 "CLOSE_ACCOUNT");
 
-        validateCondition(accountToClose.getMoneyAmount() >= 0,
+        accountValidator.validateCondition(accountToClose.getMoneyAmount() >= 0,
                 String.format("Cannot close account with negative balance: %.2f",
                         accountToClose.getMoneyAmount()), "CLOSE_ACCOUNT");
 
@@ -240,7 +191,7 @@ public class AccountServiceImpl implements AccountService {
         transferFunds(accountToClose, targetAccount);
 
         boolean removed = userAccounts.removeIf(acc -> acc.getId().equals(accountId));
-        validateCondition(removed, "Failed to remove account " + accountId, "CLOSE_ACCOUNT");
+        accountValidator.validateCondition(removed, "Failed to remove account " + accountId, "CLOSE_ACCOUNT");
 
         accountLogger.logAccountClosure(accountId, targetAccount.getId());
     }
