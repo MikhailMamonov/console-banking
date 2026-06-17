@@ -1,10 +1,5 @@
 package com.example.banking.model.entity;
 
-import org.springframework.stereotype.Component;
-
-import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
-
 
 public class Account {
 

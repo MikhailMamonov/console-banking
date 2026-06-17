@@ -2,7 +2,6 @@ package com.example.banking.console.command;
 
 import com.example.banking.console.ConsoleOperation;
 import com.example.banking.service.ConsoleInputService;
-import com.example.banking.service.OperationsConsoleListener;
 import com.example.banking.service.UserService;
 import org.springframework.stereotype.Component;
 

@@ -4,7 +4,6 @@ import com.example.banking.console.ConsoleOperation;
 import com.example.banking.exception.BankingException;
 import com.example.banking.service.AccountService;
 import com.example.banking.service.ConsoleInputService;
-import com.example.banking.service.OperationsConsoleListener;
 import org.springframework.stereotype.Component;
 
 @Component

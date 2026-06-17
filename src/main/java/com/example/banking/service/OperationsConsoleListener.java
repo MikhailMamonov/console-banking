@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Service for handling console operations.
@@ -30,13 +31,11 @@ public class OperationsConsoleListener {
             return;
         }
 
-        OperationCommand command = commandMap.get(type);
-        if (command == null) {
-            System.out.println("Command not found for operation: " + operationType);
-            return;
-        }
-
-        command.execute();
+        Optional.ofNullable(commandMap.get(type))
+                .ifPresentOrElse(
+                        OperationCommand::execute,
+                        () -> System.out.println("Command not found for operation: " + operationType)
+                );
     }
 
     public void printMenu() {
