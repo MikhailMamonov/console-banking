@@ -41,4 +41,6 @@ public interface AccountService {
      * Closes an account and optionally transfers remaining funds to another account.
      */
     void closeAccount(String accountId, String targetAccountId);
+
+    Account getAccountById(String accountId);
 }

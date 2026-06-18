@@ -207,4 +207,11 @@ public void closeAccount(String accountId, String targetAccountId) {
 
     accountLogger.logAccountClosure(accountId, targetAccount.getId());
 }
+
+    @Override
+    @Transactional(readOnly = true) // Оптимизирует чтение из PostgreSQL (без лишних блокировок строк)
+    public Account getAccountById(String accountId) {
+        // Используем готовый валидированный поиск
+        return findAccountOrThrow(accountId);
+    }
 }
