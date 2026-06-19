@@ -2,6 +2,8 @@ package com.example.banking.service;
 
 import com.example.banking.model.entity.Account;
 
+import java.util.List;
+
 /**
  * Service interface for account operations.
  */
@@ -21,6 +23,10 @@ public interface AccountService {
      * Displays all accounts belonging to a specific user.
      */
     void showUserAccounts(String userId);
+/**
+ *
+ * **/
+    List<Account> findAccountsByUserId(String userId);
 
     /**
      * Deposits a specified amount into an account.

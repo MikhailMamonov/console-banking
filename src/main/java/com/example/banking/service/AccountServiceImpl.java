@@ -134,6 +134,12 @@ public void showUserAccounts(String userId) {
 }
 
 @Override
+@Transactional(readOnly = true)
+public List<Account> findAccountsByUserId(String userId){
+    return accountRepository.findByUserId(userId);
+}
+
+@Override
 @Transactional
 public void deposit(String accountId, double amount) {
     accountValidator.validateTransaction(accountId, amount, "DEPOSIT");

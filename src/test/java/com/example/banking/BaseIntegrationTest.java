@@ -1,8 +1,14 @@
 package com.example.banking;
 
 import com.example.banking.config.SpringConfig;
+import com.example.banking.repository.AccountRepository;
+import com.example.banking.repository.UserRepository;
+import com.example.banking.service.AccountService;
+import com.example.banking.service.OperationsConsoleListener;
+import com.example.banking.service.UserService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.springframework.boot.SpringApplication;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.io.ByteArrayInputStream;
@@ -13,20 +19,39 @@ import java.io.PrintStream;
 public abstract class BaseIntegrationTest {
 
     protected AnnotationConfigApplicationContext context;
-
+    protected UserService userService;
+    protected AccountService accountService;
+    protected OperationsConsoleListener consoleListener;
     private final InputStream originalIn = System.in;
     private final PrintStream originalOut = System.out;
-
-    private ByteArrayOutputStream testOut;
+    private final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 
     @BeforeEach
     void setUp() {
-        // Поднимаем реальный контекст Spring со всеми сервисами
+        // Инициализация Spring контекста
+        if (context == null || !context.isActive()) {
+            context = new AnnotationConfigApplicationContext(BankingApplication.class);
+        }
+
+        // Получение бинов из контекста
+        userService = context.getBean(UserService.class);
+        accountService = context.getBean(AccountService.class);
+        consoleListener = context.getBean(OperationsConsoleListener.class);
+
+        // Перенаправление вывода для тестирования
+        System.setOut(new PrintStream(outputStream));
+    }
+
+    protected void setupSpringContext() {
         context = new AnnotationConfigApplicationContext(SpringConfig.class);
 
-        // Перехватываем стандартный вывод консоли
-        testOut = new ByteArrayOutputStream();
-        System.setOut(new PrintStream(testOut));
+        // Чистим базу данных через EntityManager
+        var entityManagerFactory = context.getBean(jakarta.persistence.EntityManagerFactory.class);
+        var em = entityManagerFactory.createEntityManager();
+        em.getTransaction().begin();
+        em.createNativeQuery("TRUNCATE TABLE accounts, users RESTART IDENTITY CASCADE").executeUpdate();
+        em.getTransaction().commit();
+        em.close();
     }
 
     @AfterEach
@@ -51,6 +76,10 @@ public abstract class BaseIntegrationTest {
      * Возвращает всё, что приложение успело написать в консоль
      */
     protected String getOutput() {
-        return testOut.toString();
+        return outputStream.toString();
+    }
+
+    protected void clearOutput() {
+        outputStream.reset();
     }
 }
