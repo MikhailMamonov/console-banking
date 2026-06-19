@@ -1,28 +1,30 @@
 # Console Banking Application
 
-Консольное банковское приложение на Java с использованием Spring Framework для управления пользователями и счетами.
+A console-based banking application built in Java using the Spring Framework for user and account management.
 
-## 📋 Описание
+## 📋 Description
 
-Приложение предоставляет консольный интерфейс для выполнения банковских операций:
-- Создание и управление пользователями
-- Создание и управление банковскими счетами
-- Пополнение и снятие средств
-- Переводы между счетами
-- Закрытие счетов с автоматическим переводом остатка
+The application provides a console interface for performing banking operations:
+- User creation and management
+- Bank account creation and management
+- Deposits and withdrawals
+- Transfers between accounts
+- Account closure with automatic balance transfer
 
-## 🛠️ Технологии
+## 🛠️ Technologies
 
 - **Java 17**
 - **Spring Framework 6.1.10** (Spring Context)
-- **Maven** для управления зависимостями
-- **Jakarta Annotation API** для аннотаций
+- **Maven** for dependency management
+- **Jakarta Annotation API** for annotations
+- **PostgreSQL** as the database system
 
-## 📁 Структура проекта
+## 📁 Project Structure
+text
  ```text
 📁 console-banking/
 │
-├── 📄 pom.xml                                    # 📦 Maven конфигурация
+├── 📄 pom.xml                                    # 📦 Maven configuration
 │
 └── 📁 src/
     └── 📁 main/
@@ -32,16 +34,16 @@
         │       └── 📁 example/
         │           └── 📁 banking/
         │               │
-        │               ├── 📄 Application.java                     # 🚀 Точка входа
+        │               ├── 📄 Application.java                     # 🚀 Entry point
         │               │
         │               ├── 📁 config/
-        │               │   └── 📄 SpringConfig.java               # ⚙️ Конфигурация Spring
+        │               │   └── 📄 SpringConfig.java               # ⚙️ Spring configuration
         │               │
         │               ├── 📁 console/
-        │               │   ├── 📄 OperationCommand.java           # 🎮 Интерфейс команд
-        │               │   ├── 📄 ConsoleOperation.java           # 📋 Enum операций
+        │               │   ├── 📄 OperationCommand.java           # 🎮 Command interface
+        │               │   ├── 📄 ConsoleOperation.java           # 📋 Operation enum
         │               │   └── 📁 command/
-        │               │       ├── 📄 BaseCommand.java            # 🏛️ Базовый класс
+        │               │       ├── 📄 BaseCommand.java            # 🏛️ Base class
         │               │       ├── 📄 CreateUserCommand.java
         │               │       ├── 📄 ShowAllUsersCommand.java
         │               │       ├── 📄 ShowUserAccountsCommand.java
@@ -54,48 +56,49 @@
         │               │
         │               ├── 📁 model/
         │               │   └── 📁 entity/
-        │               │       ├── 📄 User.java                  # 👤 Модель пользователя
-        │               │       └── 📄 Account.java               # 💰 Модель счета
+        │               │       ├── 📄 User.java                  # 👤 User model
+        │               │       └── 📄 Account.java               # 💰 Account model
         │               │
         │               ├── 📁 service/
-        │               │   ├── 📄 AccountService.java            # 📋 Интерфейс счетов
-        │               │   ├── 📄 AccountServiceImpl.java        # 🔧 Реализация счетов
-        │               │   ├── 📄 UserService.java               # 📋 Интерфейс пользователей
-        │               │   ├── 📄 UserServiceImpl.java           # 🔧 Реализация пользователей
-        │               │   ├── 📄 ConfigService.java             # ⚙️ Сервис конфигурации
-        │               │   ├── 📄 ConsoleInputService.java       # ⌨️ Ввод с консоли
-        │               │   ├── 📄 IdGeneratorService.java        # 🔑 Генерация ID
-        │               │   ├── 📄 AccountLogger.java             # 📝 Логирование
-        │               │   ├── 📄 AccountTransactionProcessor.java # 💳 Обработка транзакций
-        │               │   └── 📄 OperationsConsoleListener.java  # 🎯 Обработка команд
+        │               │   ├── 📄 AccountService.java            # 📋 Account interface
+        │               │   ├── 📄 AccountServiceImpl.java        # 🔧 Account implementation
+        │               │   ├── 📄 UserService.java               # 📋 User interface
+        │               │   ├── 📄 UserServiceImpl.java           # 🔧 User implementation
+        │               │   ├── 📄 ConfigService.java             # ⚙️ Configuration service
+        │               │   ├── 📄 ConsoleInputService.java       # ⌨️ Console input
+        │               │   ├── 📄 IdGeneratorService.java        # 🔑 ID generation
+        │               │   ├── 📄 AccountLogger.java             # 📝 Logging
+        │               │   ├── 📄 AccountTransactionProcessor.java # 💳 Transaction processing
+        │               │   └── 📄 OperationsConsoleListener.java  # 🎯 Command handling
         │               │
         │               └── 📁 exception/
-        │                   ├── 📄 BankingException.java          # ❌ Основное исключение
-        │                   └── 📄 ErrorType.java                 # 📋 Типы ошибок
+        │                   ├── 📄 BankingException.java          # ❌ Main exception
+        │                   └── 📄 ErrorType.java                 # 📋 Error types
         │
         └── 📁 resources/
-            └── 📄 application.properties                          # ⚙️ Настройки приложения
+            └── 📄 application.properties                          # ⚙️ Application settings
 ```
-## 🚀 Установка и запуск
+## 🚀 Installation and Setup
 
-### Требования
-- Java 17 или выше
+### Requirements
+- Java 17 or higher
 - Maven 3.6+
+- Docker (for database)
 
 
-## 🛠️ Запуск базы данных и настройка окружения
+## 🛠️ Database Setup and Environment Configuration
 
-Приложение использует СУБД **PostgreSQL**, развернутую в изолированных контейнерах Docker.
+The application uses PostgreSQL as its database, deployed in isolated Docker containers.
 
-### 1. Запуск PostgreSQL и pgAdmin через Docker
+### 1. Starting PostgreSQL and pgAdmin via Docker
 
-Для запуска СУБД и веб-интерфейса управления базой данных выполните в терминале следующие команды:
+To start the database and web management interface, run the following commands in your terminal:
 
 ```bash
-# Создание внутренней сети Docker для контейнеров
+# Create Docker internal network for containers
 sudo docker network create banking-network
 
-# Запуск контейнера PostgreSQL (доступен локально на порту 5433)
+# Start PostgreSQL container (accessible locally on port 5433)
 sudo docker run --name banking-postgres \
   --network banking-network \
   -e POSTGRES_PASSWORD=stud_password \
@@ -103,7 +106,7 @@ sudo docker run --name banking-postgres \
   -p 5433:5432 \
   -d postgres:latest
 
-# Запуск контейнера pgAdmin 4 (веб-интерфейс)
+# Start pgAdmin 4 container (web interface)
 sudo docker run --name banking-pgadmin \
   --network banking-network \
   -e PGADMIN_DEFAULT_EMAIL=student@test.com \
@@ -112,22 +115,22 @@ sudo docker run --name banking-pgadmin \
   -d dpage/pgadmin4
 ```
 
-### 2. Подключение через pgAdmin
+### 2. Connecting via pgAdmin
 
-1. Откройте браузер и перейдите по адресу: [http://localhost:8080](http://localhost:8080)
-2. Войдите, используя данные:
+1. Open your browser and go to: http://localhost:8080
+2. Log in using the credentials:
     * **Email**: `student@test.com`
     * **Password**: `admin_password`
-3. Нажмите **Add New Server** и на вкладке **Connection** укажите:
-    * **Host name/address**: `banking-postgres` *(имя контейнера во внутренней сети)*
-    * **Port**: `5432` *(внутренний порт СУБД)*
+3. Click **Add New Server** and on the **Connection** tab specify:
+    * **Host name/address**: `banking-postgres` *(container name in the internal network)*
+    * **Port**: `5432` *(internal database port)*
     * **Maintenance database**: `banking_db`
     * **Username**: `postgres`
     * **Password**: `stud_password`
 
-### 3. Конфигурация приложения
+### 3. Application Configuration
 
-Убедитесь, что в файле `src/main/resources/application.properties` прописаны актуальные настройки подключения к вашей локальной машине:
+Ensure the `src/main/resources/application.properties` file contains the correct connection settings for your local machine:
 
 ```properties
 spring.datasource.url=jdbc:postgresql://localhost:5433/banking_db
@@ -135,131 +138,132 @@ spring.datasource.username=postgres
 spring.datasource.password=stud_password
 spring.datasource.driver-class-name=org.postgresql.Driver
 
-# Автоматическое управление схемами таблиц (ORM Hibernate)
+# Automatic schema management (ORM Hibernate)
 spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
 spring.jpa.hibernate.ddl-auto=update
 spring.jpa.show-sql=true
 ```
 
-### 4. Компиляция и запуск приложения
+### 4. Compilation and Application Launch
 
-Так как проект использует современную версию Java, сборку и запуск рекомендуется выполнять с явным указанием пути к установленной JDK через переменную окружения `JAVA_HOME`:
+Since the project uses a modern Java version, building and running should be done with explicit JDK path specification via the JAVA_HOME environment variable:
 
 ```bash
-# Очистка и компиляция проекта под целевую Java 21
-String format: JAVA_HOME=/path/to/your/jdk ./mvnw clean compile
+# Clean and compile the project for Java 21
+JAVA_HOME=/path/to/your/jdk ./mvnw clean compile
 
-# Пример для Axiom JDK 26:
+# Example with Axiom JDK 26:
 JAVA_HOME=/home/student/.jdks/axiomjdk-26 ./mvnw clean compile
 
-# Запуск Spring Boot приложения
+# Run the Spring Boot application
 JAVA_HOME=/home/student/.jdks/axiomjdk-26 ./mvnw spring-boot:run
 ```
 
-### Сборка
+### Build
 ```bash
 mvn clean package
 ```
 
-### Запуск
+### Run
 
 ```bash
 java -jar target/console-banking-1.0-SNAPSHOT-jar-with-dependencies.jar
 ```
 
-Или через Maven:
+Or via Maven:
 
 ```bash
 mvn exec:java -Dexec.mainClass="com.example.banking.Application"
 ```
 
-### 📝 Доступные операции
+### 📝 Available Operations
 
-После запуска приложения вам будет доступно меню со следующими операциями:
+After launching the application, you'll have access to a menu with the following operations:
 
-| Операция       | Описание                                |
-|----------------|-----------------------------------------|
-| CREATE_USER    | Создание нового пользователя            |
-| SHOW_USERS     | Просмотр всех пользователей             |
-| DELETE_USER    | Удаление пользователя                   |
-| CREATE_ACCOUNT | Создание нового счета для пользователя  |
-| SHOW_ACCOUNTS  | Просмотр счетов пользователя            |
-| DEPOSIT        | Пополнение счета                        |
-| WITHDRAW       | Снятие средств со счета                 |
-| TRANSFER       | Перевод между счетами                   |
-| CLOSE_ACCOUNT  | Закрытие счета                          |
-| EXIT           | Выход из приложения                     |
+| Operation      | Description                           |
+|----------------|---------------------------------------|
+| CREATE_USER    | Create a new user                    |
+| SHOW_USERS     | View all users                       |
+| DELETE_USER    | Delete a user                        |
+| CREATE_ACCOUNT | Create a new account for a user      |
+| SHOW_ACCOUNTS  | View a user's accounts               |
+| DEPOSIT        | Deposit funds into an account        |
+| WITHDRAW       | Withdraw funds from an account       |
+| TRANSFER       | Transfer between accounts            |
+| CLOSE_ACCOUNT  | Close an account                     |
+| EXIT           | Exit the application                 |
 
-### ⚙️ Конфигурация
+### ⚙️ Configuration
 
-Настройки приложения хранятся в application.properties:
+Application settings are stored in `application.properties`:
 ```properties
-# Настройки счетов
-account.default-amount=100.0           # Начальный баланс при создании счета
-account.transfer-commission=50         # Комиссия при переводе между пользователями
-account.minimum-balance=0.0            # Минимальный баланс
-account.maximum-balance=1000000.0      # Максимальный баланс
+# Account settings
+account.default-amount=100.0           # Initial balance when creating an account
+account.transfer-commission=50         # Commission for transfers between users
+account.minimum-balance=0.0            # Minimum balance
+account.maximum-balance=1000000.0      # Maximum balance
 
-# Настройки пользователей
-user.max-accounts=5                    # Максимальное количество счетов на пользователя
-user.login.min-length=3                # Минимальная длина логина
-user.login.max-length=20               # Максимальная длина логина
+# User settings
+user.max-accounts=5                    # Maximum number of accounts per user
+user.login.min-length=3                # Minimum login length
+user.login.max-length=20               # Maximum login length
 
-# Настройки приложения
+# Application settings
 app.name=Banking Application
 app.version=1.0.0
 app.enable-logging=true
 ```
 
-## 🏗️ Архитектура
+## 🏗️ Architecture
 
-### Сервисный слой
+### Service Layer
 
-**AccountService**            Управление банковскими счетами       
-**UserService**               Управление пользователями                  
-**ConfigService**             Доступ к конфигурации                      
-**ConsoleInputService**       Обработка ввода с консоли                  
-**IdGeneratorService**        Генерация уникальных ID                    
-**OperationsConsoleListener** Обработка команд                           
+| Service | Responsibility |
+|---------|---------------|
+| AccountService | Bank account management |
+| UserService | User management |
+| ConfigService | Access to configuration |
+| ConsoleInputService | Console input handling |
+| IdGeneratorService | Unique ID generation |
+| OperationsConsoleListener | Command handling |
 
-### Модели данных
+### Data Models
 
-**User**: Пользователь с логином и списком счетов
+**User**: User with login and list of accounts
 
-**Account**: Банковский счет с балансом
+**Account**: Bank account with balance
 
-### Обработка ошибок
+### Error Handling
 
-- **Единый механизм обработки исключений** через `BankingException`
-- **Типизированные ошибки** через `ErrorType`
-- **Дружественные сообщения** для пользователя
+- **Unified exception handling** via `BankingException`
+- **Typed errors** via `ErrorType`
+- **User-friendly messages** for the end user
 
-## 🔍 Особенности реализации
+## 🔍 Implementation Features
 
-### Валидация
+### Validation
 
-- Проверка логина на уникальность и длину
+- Login uniqueness and length validation
 
-- Проверка суммы транзакции (положительное число)
+- Transaction amount validation (positive number)
 
-- Проверка наличия средств на счете
+- Sufficient funds check on account
 
-- Проверка существования пользователя/счета
+- User/account existence verification
 
-### Комиссия
+### Commission
 
-- Перевод между счетами одного пользователя - без комиссии
+- Transfers between accounts of the same user - no commission
 
-- Перевод между разными пользователями - с комиссией (настраивается)
+- Transfers between different users - with commission (configurable)
 
-### Закрытие счета
-- Автоматический перевод остатка на другой счет пользователя
+### Account Closure
+- Automatic transfer of remaining balance to another user account
 
-- Проверка наличия альтернативного счета
+- Verification of alternative account existence
 
-- Запрет закрытия единственного счета
-### Логирование
+- Prevention of closing the only account
+### Logging
+- All operations are logged through AccountLogger
 
-- Все операции логируются через AccountLogger
-
-- Единые шаблоны сообщений
+- Unified message templates
